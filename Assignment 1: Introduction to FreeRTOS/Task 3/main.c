@@ -74,6 +74,14 @@
 /* Constants for the ComTest demo application tasks. */
 #define mainCOM_TEST_BAUD_RATE	( ( unsigned long ) 115200 )
 
+/* Create enum to track push button status */
+enum pushButtonStates{
+	lessThanTwoSecs,
+	lessThanFourSecs,
+	moreThanFourSecs
+};
+
+enum pushButtonStates pushButtonState;
 
 /*
  * Configure the processor for use with the Keil demo board.  This is very
@@ -83,8 +91,8 @@
 static void prvSetupHardware( void );
 /*-----------------------------------------------------------*/
 
-/* "LED 1000ms toggle" task implementation. */
-void ledToggle1000ms( void * pvParameters )
+/* "LED toggle" task implementation. */
+void ledToggle( void * pvParameters )
 {
     /* The parameter value is expected to be 1 as 1 is passed in the
     pvParameters value in the call to xTaskCreate() below. */
@@ -92,25 +100,82 @@ void ledToggle1000ms( void * pvParameters )
 
     for( ;; )
     {
-        /* Task code goes here. */
+      /* Task code goes here. */
 			
-			// turn the LED on
-			GPIO_write(PORT_0, PIN0, PIN_IS_HIGH);
-			
-			// block the task for 1000 ms
-			vTaskDelay(1000);
-			
-			// turn the LED off
-			GPIO_write(PORT_0, PIN0, PIN_IS_LOW);
-			
-			// block the task for 1000 ms
-			vTaskDelay(1000);
+			switch (pushButtonState){
+				case lessThanTwoSecs:
+					// turn the LED off
+					GPIO_write(PORT_0, PIN0, PIN_IS_LOW);
+					break;
+				
+				case lessThanFourSecs:
+					// turn the LED on
+					GPIO_write(PORT_0, PIN0, PIN_IS_HIGH);
+					// block the task for 400 ms
+					vTaskDelay(400);
+					// turn the LED off
+					GPIO_write(PORT_0, PIN0, PIN_IS_LOW);
+					// block the task for 400 ms
+					vTaskDelay(400);
+					break;
+
+				case moreThanFourSecs:
+					// turn the LED on
+					GPIO_write(PORT_0, PIN0, PIN_IS_HIGH);
+					// block the task for 100 ms
+					vTaskDelay(100);
+					// turn the LED off
+					GPIO_write(PORT_0, PIN0, PIN_IS_LOW);
+					// block the task for 100 ms
+					vTaskDelay(100);
+					break;
+			}
     }
 }
 
+void buttonCheck( void * pvParameters ){
+	
+	unsigned char button = 0;
+	configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
+	while (1){
+		button = GPIO_read(PORT_0, PIN1);
+		if (button == PIN_IS_LOW){
+			// button is pressed, could be in one of the three possible states
+			vTaskDelay(2000);
+			button = GPIO_read(PORT_0, PIN1);
+			if (button == PIN_IS_LOW){
+				// button is still pressed, could be in second or third state
+				vTaskDelay(2000);
+				button = GPIO_read(PORT_0, PIN1);
+				if (button == PIN_IS_LOW){
+					// button is still pressed after 4 secs, must be in the third state
+					pushButtonState = moreThanFourSecs;
+				}
+				else {
+					// button is released in between 2 and 4 secs, must be in the second state
+					pushButtonState = lessThanFourSecs;
+					// move the task to the blocked state so that the button could save its current state, simplest method to do so is the vTaskDelay()
+					vTaskDelay(2000);
+				}
+			}
+			else {
+				// button is released before 2 seconds, must be in the first state
+				pushButtonState = lessThanTwoSecs;
+				//vTaskDelay(2000);
+			}
+			}
+		else {
+			// button is not pressed at all, considered to be in the first state
+			pushButtonState = lessThanTwoSecs;
+			//vTaskDelay(2000);
+		}
+	}
+}
 
 	/* Handlers declarations */
-	TaskHandle_t ledToggle1000Handler = NULL;
+	TaskHandle_t ledToggleHandler = NULL;
+	TaskHandle_t buttonCheckHandler = NULL;
+
 /*
  * Application entry point:
  * Starts all the other tasks, then starts the scheduler. 
@@ -124,12 +189,22 @@ int main( void )
     /* Create Tasks here */
 	
 	xTaskCreate(
-							ledToggle1000ms,       /* Function that implements the task. */
-							"LED Toggle 1000 ms",          /* Text name for the task. */
+							ledToggle,       /* Function that implements the task. */
+							"LED Toggle",          /* Text name for the task. */
 							90,      /* Stack size in words, not bytes. */
 							( void * ) 1,    /* Parameter passed into the task. */
 							1,/* Priority at which the task is created. */
-							&ledToggle1000Handler );      /* Used to pass out the created task's handle. */
+							&ledToggleHandler
+							);      /* Used to pass out the created task's handle. */
+							
+	xTaskCreate(
+							buttonCheck,       /* Function that implements the task. */
+							"button Check",          /* Text name for the task. */
+							90,      /* Stack size in words, not bytes. */
+							( void * ) 1,    /* Parameter passed into the task. */
+							2,/* Priority at which the task is created. */
+							&buttonCheckHandler
+							);      /* Used to pass out the created task's handle. */						
 							
 
 	

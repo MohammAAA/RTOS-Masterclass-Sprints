@@ -108,9 +108,61 @@ void ledToggle1000ms( void * pvParameters )
     }
 }
 
+/* "LED toggle 500ms" task implementation. */
+void ledToggle500ms( void * pvParameters )
+{
+    /* The parameter value is expected to be 1 as 1 is passed in the
+    pvParameters value in the call to xTaskCreate() below. */
+    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
+
+    for( ;; )
+    {
+        /* Task code goes here. */
+			
+			// turn the LED on
+			GPIO_write(PORT_0, PIN1, PIN_IS_HIGH);
+			
+			// block the task for 1000 ms
+			vTaskDelay(500);
+			
+			// turn the LED off
+			GPIO_write(PORT_0, PIN1, PIN_IS_LOW);
+			
+			// block the task for 1000 ms
+			vTaskDelay(500);
+    }
+}
+
+/* "LED toggle 100ms" task implementation. */
+void ledToggle100ms( void * pvParameters )
+{
+    /* The parameter value is expected to be 1 as 1 is passed in the
+    pvParameters value in the call to xTaskCreate() below. */
+    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
+
+    for( ;; )
+    {
+        /* Task code goes here. */
+			
+			// turn the LED on
+			GPIO_write(PORT_0, PIN2, PIN_IS_HIGH);
+			
+			// block the task for 1000 ms
+			vTaskDelay(100);
+			
+			// turn the LED off
+			GPIO_write(PORT_0, PIN2, PIN_IS_LOW);
+			
+			// block the task for 1000 ms
+			vTaskDelay(100);
+    }
+}
 
 	/* Handlers declarations */
 	TaskHandle_t ledToggle1000Handler = NULL;
+	TaskHandle_t ledToggle500Handler = NULL;
+	TaskHandle_t ledToggle100Handler = NULL;
+
 /*
  * Application entry point:
  * Starts all the other tasks, then starts the scheduler. 
@@ -131,6 +183,21 @@ int main( void )
 							1,/* Priority at which the task is created. */
 							&ledToggle1000Handler );      /* Used to pass out the created task's handle. */
 							
+	xTaskCreate(
+							ledToggle500ms,       /* Function that implements the task. */
+							"LED Toggle 500 ms",          /* Text name for the task. */
+							90,      /* Stack size in words, not bytes. */
+							( void * ) 1,    /* Parameter passed into the task. */
+							2,/* Priority at which the task is created. */
+							&ledToggle500Handler );      /* Used to pass out the created task's handle. */
+							
+	xTaskCreate(
+							ledToggle100ms,       /* Function that implements the task. */
+							"LED Toggle 100 ms",          /* Text name for the task. */
+							90,      /* Stack size in words, not bytes. */
+							( void * ) 1,    /* Parameter passed into the task. */
+							3,/* Priority at which the task is created. */
+							&ledToggle100Handler );      /* Used to pass out the created task's handle. */
 
 	
 
